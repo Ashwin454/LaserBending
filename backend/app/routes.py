@@ -567,35 +567,63 @@ def save_snapshot():
     expected_angle = request.form.get('expectedAngle', '')
     coords = eval(coordinates)
     logger.debug("Coordinates: %s, Expected Angle: %s", coords, expected_angle)
+
+    # Save snapshot temporarily to UPLOAD_FOLDER
+    if not os.path.exists(current_app.config['UPLOAD_FOLDER']):
+        os.makedirs(current_app.config['UPLOAD_FOLDER'])
     filename = secure_filename(snapshot.filename)
     snapshot_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     snapshot.save(snapshot_path)
+
+    # Upload snapshot to Cloudinary
+    try:
+        logger.debug("Uploading snapshot to Cloudinary: %s", snapshot_path)
+        response = cloudinary.uploader.upload(
+            snapshot_path,
+            folder="snapshots",  # Specify a folder in Cloudinary (e.g., "snapshots")
+            public_id=filename.rsplit('.', 1)[0],  # Use filename without extension as public_id
+            overwrite=True  # Overwrite if the file exists
+        )
+        cloudinary_url = response["secure_url"]  # Get the secure URL of the uploaded image
+        print(cloudinary_url)
+        logger.info("Snapshot uploaded to Cloudinary: %s", cloudinary_url)
+    except Exception as e:
+        logger.error("Failed to upload snapshot to Cloudinary: %s", str(e))
+        return jsonify({'success': False, 'message': f'Failed to upload snapshot to Cloudinary: {str(e)}'}), 500
+
+    # Process the image (existing logic)
     image = cv2.imread(snapshot_path)
     if image is None:
         logger.error("Failed to load snapshot: %s", snapshot_path)
         return jsonify({'success': False, 'warning': 'Failed to load snapshot'}), 500
+
     bbox = detect_metal_sheet(image)
     if bbox:
         x, y, w, h = bbox
         roi = image[y:y+h, x:x+w]
     else:
         roi = image
+
     wire_contour = detect_wire_contour(roi)
     if wire_contour is None:
         logger.warning("No wire contour detected")
         return jsonify({'success': False, 'warning': 'No wire contour detected'}), 500
+
     mask = np.zeros_like(cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY))
     cv2.drawContours(mask, [wire_contour], -1, 255, thickness=cv2.FILLED)
     bend_points, angles_dict = detect_bends_and_angles(
         mask, roi, horizontal_only=True, RIGHT_ROI=0, minSegmentLength=40, minBendSpacing=50
     )
+
     if not bend_points:
         logger.warning("No bend points detected")
         return jsonify({'success': False, 'warning': 'No bend points detected'}), 500
+
     laser_x, laser_y = coords.get('x', 0), coords.get('y', 0)
     closest_idx = min(range(len(bend_points)), key=lambda i: np.hypot(bend_points[i][0] - laser_x, bend_points[i][1] - laser_y))
     closest_bend = bend_points[closest_idx]
     detected_angle = angles_dict.get(f"Bend {closest_idx + 1}", 0)
+
     warning = None
     if expected_angle:
         expected_angle = float(expected_angle)
@@ -609,14 +637,17 @@ def save_snapshot():
             warning = f'Angle deviation too high: detected {normalized_angle:.2f}° vs expected {expected_angle:.2f}°'
     else:
         warning = 'No expected angle provided'
+
     closest_bend_serializable = [int(closest_bend[0]), int(closest_bend[1])]
     response = {
         'success': True,
         'detected_angle': float(detected_angle),
-        'closest_bend': closest_bend_serializable
+        'closest_bend': closest_bend_serializable,
+        'cloudinary_url': cloudinary_url  # Add the Cloudinary URL to the response
     }
     if warning:
         response['warning'] = warning
+
     logger.info("Snapshot response: %s", response)
     return jsonify(response), 200
 
