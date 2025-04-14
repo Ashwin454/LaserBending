@@ -120,12 +120,12 @@ function Home() {
               <h5 className="card-title">Upload DXF</h5>
               <input
                 type="file"
-                accept=".dxf"
+                accept=".dxf,application/dxf,application/*"
                 onChange={uploadFile}
                 className="d-none"
                 ref={fileInputRef}
                 disabled={loading}
-              />
+                />
               <button
                 onClick={triggerFileInput}
                 className="btn btn-upload w-100 mb-4"
