@@ -328,7 +328,7 @@ function Camera() {
     formData.append('expectedAngle', expectedAngle !== null ? expectedAngle.toString() : '');
 
     try {
-      const response = await axios.post('http://localhost:5000/auth/save-snapshot', formData, {
+      const response = await axios.post('https://laserbending.onrender.com/auth/save-snapshot', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setStatus('Snapshot saved and sent');

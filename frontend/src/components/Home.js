@@ -21,7 +21,7 @@ function Home() {
     formData.append('file', file);
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/auth/handle-dxf', formData);
+      const res = await axios.post('https://laserbending.onrender.com/auth/handle-dxf', formData);
       if (res.data.success) {
         setDxfInfo(res.data.dxf_info);
       } else {
@@ -72,7 +72,7 @@ function Home() {
     setLoading(true);
     const anglesArray = angles.split(',').map((a) => parseFloat(a.trim()));
     try {
-      const res = await axios.post('http://localhost:5000/auth/predict', { angles: anglesArray });
+      const res = await axios.post('https://laserbending.onrender.com/auth/predict', { angles: anglesArray });
       if (res.status === 200) {
         setLaserParams(res.data);
       } else {
@@ -88,7 +88,7 @@ function Home() {
     setLoading(true);
     try {
       const anglesArray = angles.split(',').map((a) => parseFloat(a.trim()));
-      const res = await axios.post('http://localhost:5000/auth/generate-gcode', { angles: anglesArray });
+      const res = await axios.post('https://laserbending.onrender.com/auth/generate-gcode', { angles: anglesArray });
       if (res.data && res.data.gcode) {
         setGcode(res.data.gcode);
       } else {
