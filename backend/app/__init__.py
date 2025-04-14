@@ -22,7 +22,7 @@ def create_app():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     # CORS for frontend origins
-    origins = ["http://localhost:3000", "http://10.50.45.244:8081"]
+    origins = ["http://localhost:3000", "http://10.50.45.244:8081", "https://laserbending-1.onrender.com"]
     CORS(app, resources={
         r"/auth/*": {"origins": origins},
         r"/save-snapshot": {"origins": origins}
