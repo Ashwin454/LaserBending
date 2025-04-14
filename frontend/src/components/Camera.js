@@ -9,7 +9,7 @@ function Camera() {
   const [intensity, setIntensity] = useState('Change Ratio: N/A (Count: 0)');
   const [laserCoords, setLaserCoords] = useState(null);
   const [warning, setWarning] = useState('');
-  const [loading, setLoading] = useState(false); // Loading state for camera actions
+  const [loading, setLoading] = useState(false);
   let refFrameGray = null;
   let refFrameRed = null;
   let windowTop = 0;
@@ -55,7 +55,13 @@ function Camera() {
   const startCamera = () => {
     setLoading(true);
     navigator.mediaDevices
-      .getUserMedia({ video: { width: 640, height: 480 } })
+      .getUserMedia({
+        video: {
+          facingMode: 'environment', // Request back camera
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+      })
       .then((stream) => {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -64,11 +70,36 @@ function Camera() {
           rafId.current = requestAnimationFrame(process);
         };
         rafId.current = requestAnimationFrame(process);
+        setStatus('Camera started');
         setLoading(false);
       })
       .catch((err) => {
-        setStatus('Camera error: ' + err.message);
-        setLoading(false);
+        console.error('Error accessing back camera:', err);
+        setStatus('Back camera error: ' + err.message);
+        // Fallback to any camera
+        navigator.mediaDevices
+          .getUserMedia({
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            },
+          })
+          .then((stream) => {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+            const process = () => {
+              processFrame();
+              rafId.current = requestAnimationFrame(process);
+            };
+            rafId.current = requestAnimationFrame(process);
+            setStatus('Camera started (fallback)');
+            setLoading(false);
+          })
+          .catch((fallbackErr) => {
+            console.error('Fallback camera error:', fallbackErr);
+            setStatus('No camera available: ' + fallbackErr.message);
+            setLoading(false);
+          });
       });
   };
 
