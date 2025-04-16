@@ -10,6 +10,10 @@ function Camera() {
   const [laserCoords, setLaserCoords] = useState(null);
   const [warning, setWarning] = useState('');
   const [loading, setLoading] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1); // Zoom level (1 = default, >1 = zoomed in)
+  const [maxZoom, setMaxZoom] = useState(5); // Maximum zoom level
+  const [videoWidth, setVideoWidth] = useState(640); // Dynamic width
+  const [videoHeight, setVideoHeight] = useState(480); // Dynamic height
   let refFrameGray = null;
   let refFrameRed = null;
   let windowTop = 0;
@@ -47,22 +51,49 @@ function Camera() {
     };
     checkOpenCV();
 
+    // Handle orientation change
+    const handleOrientationChange = () => {
+      updateResolution();
+    };
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', handleOrientationChange);
+
     return () => {
       stopCamera();
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
     };
   }, []);
 
+  const updateResolution = () => {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const aspectRatio = 4 / 3; // Common camera aspect ratio
+    if (isLandscape) {
+      setVideoWidth(Math.min(window.innerWidth, 1280));
+      setVideoHeight(Math.floor(videoWidth / aspectRatio));
+    } else {
+      setVideoHeight(Math.min(window.innerHeight, 960));
+      setVideoWidth(Math.floor(videoHeight * aspectRatio));
+    }
+  };
+
   const startCamera = () => {
     setLoading(true);
+    updateResolution();
     navigator.mediaDevices
       .getUserMedia({
         video: {
-          facingMode: 'environment', // Request back camera
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          facingMode: 'environment',
+          width: { ideal: videoWidth },
+          height: { ideal: videoHeight },
+          zoom: { ideal: zoomLevel }, // Attempt to set initial zoom
         },
       })
       .then((stream) => {
+        const videoTrack = stream.getVideoTracks()[0];
+        const capabilities = videoTrack.getCapabilities();
+        setMaxZoom(capabilities.zoom?.max || 5); // Set max zoom based on device capability
+
         videoRef.current.srcObject = stream;
         videoRef.current.play();
         const process = () => {
@@ -76,12 +107,11 @@ function Camera() {
       .catch((err) => {
         console.error('Error accessing back camera:', err);
         setStatus('Back camera error: ' + err.message);
-        // Fallback to any camera
         navigator.mediaDevices
           .getUserMedia({
             video: {
-              width: { ideal: 640 },
-              height: { ideal: 480 },
+              width: { ideal: videoWidth },
+              height: { ideal: videoHeight },
             },
           })
           .then((stream) => {
@@ -143,7 +173,17 @@ function Camera() {
     }
 
     const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+    ctx.drawImage(
+      videoRef.current,
+      0,
+      0,
+      canvasRef.current.width / zoomLevel,
+      canvasRef.current.height / zoomLevel,
+      0,
+      0,
+      canvasRef.current.width,
+      canvasRef.current.height
+    );
 
     let frame = null;
     try {
@@ -381,13 +421,48 @@ function Camera() {
     setLoading(false);
   };
 
+  const handleZoomIn = () => {
+    if (zoomLevel < maxZoom) {
+      setZoomLevel(prev => Math.min(prev + 0.5, maxZoom));
+      adjustZoom();
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (zoomLevel > 1) {
+      setZoomLevel(prev => Math.max(prev - 0.5, 1));
+      adjustZoom();
+    }
+  };
+
+  const adjustZoom = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const videoTrack = videoRef.current.srcObject.getVideoTracks()[0];
+      if (videoTrack && 'applyConstraints' in videoTrack) {
+        videoTrack.applyConstraints({
+          zoom: zoomLevel,
+        }).catch(err => console.warn('Zoom not supported, falling back to canvas:', err));
+      }
+    }
+  };
+
   return (
     <div className="camera-page">
       <h1 className="camera-page-title">Laser Detection</h1>
       <div className="camera-page-card">
         <div className="camera-page-card-body">
-          <video ref={videoRef} width="640" height="480" className="camera-page-video-feed" />
-          <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }} />
+          <video
+            ref={videoRef}
+            width={videoWidth}
+            height={videoHeight}
+            className="camera-page-video-feed"
+          />
+          <canvas
+            ref={canvasRef}
+            width={videoWidth}
+            height={videoHeight}
+            style={{ display: 'none' }}
+          />
           <p className="camera-page-status-text">Status: {status}</p>
           <p className="camera-page-intensity-text">Intensity: {intensity}</p>
           {laserCoords && (
@@ -395,6 +470,12 @@ function Camera() {
           )}
           {warning && <p className="camera-page-warning-text">Warning: {warning}</p>}
           <div className="camera-page-button-group">
+            <button onClick={handleZoomIn} className="camera-page-btn camera-page-btn-secondary" disabled={loading || zoomLevel >= maxZoom}>
+              Zoom In +
+            </button>
+            <button onClick={handleZoomOut} className="camera-page-btn camera-page-btn-secondary" disabled={loading || zoomLevel <= 1}>
+              Zoom Out -
+            </button>
             <button onClick={startCamera} className="camera-page-btn camera-page-btn-primary" disabled={loading}>
               Start Camera
             </button>

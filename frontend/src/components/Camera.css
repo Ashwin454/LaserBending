@@ -1,186 +1,217 @@
 .camera-page {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem 2rem;
-    background: linear-gradient(135deg, #e3eefb 0%, #ffffff 100%);
-    min-height: 100vh;
-    font-family: 'Arial', sans-serif;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 2rem;
+  background: linear-gradient(135deg, #e3eefb 0%, #ffffff 100%);
+  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+}
+
+.camera-page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.camera-page-card {
+  border: none;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  padding: 1.5rem;
+}
+
+.camera-page-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.camera-page-card-body {
+  text-align: center;
+}
+
+.camera-page-video-feed {
+  display: block;
+  margin: 0 auto 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  /* Dynamic size from state, fallback to max */
+  max-width: 100%;
+  width: 640px; /* Default from state */
+  height: 480px; /* Default from state */
+}
+
+.camera-page-status-text,
+.camera-page-intensity-text,
+.camera-page-coords-text,
+.camera-page-warning-text {
+  font-size: 1rem;
+  color: #374151;
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+
+.camera-page-warning-text {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.camera-page-button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+.camera-page-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  transition: transform 0.3s, background-color 0.3s;
+  color: #ffffff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border: none;
+}
+
+.camera-page-btn:hover {
+  transform: scale(1.05);
+}
+
+.camera-page-btn-primary {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2a5a9b 100%);
+}
+
+.camera-page-btn-primary:hover {
+  background: linear-gradient(135deg, #173077 0%, #214c88 100%);
+}
+
+.camera-page-btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.camera-page-btn-danger:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.camera-page-btn-secondary {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+}
+
+.camera-page-btn-secondary:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+}
+
+.camera-page-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .camera-page {
+    padding: 1rem;
   }
-  
+
   .camera-page-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #1e3a8a;
-    text-align: center;
-    margin-bottom: 2.5rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+    font-size: 2rem;
   }
-  
+
   .camera-page-card {
-    border: none;
-    border-radius: 15px;
-    background: #ffffff;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s, box-shadow 0.3s;
-    padding: 1.5rem;
+    padding: 1rem;
   }
-  
-  .camera-page-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  }
-  
-  .camera-page-card-body {
-    text-align: center;
-  }
-  
+
   .camera-page-video-feed {
-    display: block;
-    margin: 0 auto 1.5rem;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%; /* Full width on small screens */
+    height: auto; /* Maintain aspect ratio */
+    max-width: 640px;
+    margin-bottom: 1rem;
   }
-  
+
   .camera-page-status-text,
   .camera-page-intensity-text,
   .camera-page-coords-text,
   .camera-page-warning-text {
-    font-size: 1rem;
-    color: #374151;
-    margin: 0.75rem 0;
-    line-height: 1.6;
+    font-size: 0.9rem;
   }
-  
-  .camera-page-warning-text {
-    color: #ef4444;
-    font-weight: 600;
-  }
-  
-  .camera-page-button-group {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 1.5rem;
-  }
-  
+
   .camera-page-btn {
-    border-radius: 10px;
-    font-weight: 600;
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    transition: transform 0.3s, background-color 0.3s;
-    color: #ffffff;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.2rem;
+  }
+
+  .camera-page-button-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .camera-page-title {
+    font-size: 1.8rem;
+  }
+
+  .camera-page-card {
+    padding: 0.75rem;
+  }
+
+  .camera-page-video-feed {
+    max-width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  .camera-page-status-text,
+  .camera-page-intensity-text,
+  .camera-page-coords-text,
+  .camera-page-warning-text {
+    font-size: 0.85rem;
+  }
+
+  .camera-page-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .camera-page-button-group {
     gap: 0.5rem;
   }
-  
-  .camera-page-btn:hover {
-    transform: scale(1.05);
+}
+
+/* Landscape Mode Specific */
+@media (orientation: landscape) {
+  .camera-page-video-feed {
+    width: 100%; /* Full width in landscape */
+    height: auto; /* Maintain aspect ratio */
+    max-height: 100vh; /* Prevent overflow */
   }
-  
-  .camera-page-btn-primary {
-    background: linear-gradient(135deg, #1e3a8a 0%, #2a5a9b 100%);
+
+  .camera-page-card {
+    padding: 1rem;
   }
-  
-  .camera-page-btn-primary:hover {
-    background: linear-gradient(135deg, #173077 0%, #214c88 100%);
+
+  .camera-page-button-group {
+    flex-direction: row; /* Keep horizontal in landscape */
+    gap: 0.75rem;
   }
-  
-  .camera-page-btn-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  }
-  
-  .camera-page-btn-danger:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  }
-  
-  .camera-page-btn-secondary {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-  }
-  
-  .camera-page-btn-secondary:hover {
-    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  }
-  
-  /* Responsive Design */
-  @media (max-width: 768px) {
-    .camera-page {
-      padding: 1rem;
-    }
-  
-    .camera-page-title {
-      font-size: 2rem;
-    }
-  
-    .camera-page-card {
-      padding: 1rem;
-    }
-  
-    .camera-page-video-feed {
-      width: 100%;
-      height: auto;
-      max-width: 640px;
-      margin-bottom: 1rem;
-    }
-  
-    .camera-page-status-text,
-    .camera-page-intensity-text,
-    .camera-page-coords-text,
-    .camera-page-warning-text {
-      font-size: 0.9rem;
-    }
-  
-    .camera-page-btn {
-      font-size: 0.9rem;
-      padding: 0.6rem 1.2rem;
-    }
-  
-    .camera-page-button-group {
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .camera-page-title {
-      font-size: 1.8rem;
-    }
-  
-    .camera-page-card {
-      padding: 0.75rem;
-    }
-  
-    .camera-page-video-feed {
-      max-width: 100%;
-      margin-bottom: 0.75rem;
-    }
-  
-    .camera-page-status-text,
-    .camera-page-intensity-text,
-    .camera-page-coords-text,
-    .camera-page-warning-text {
-      font-size: 0.85rem;
-    }
-  
-    .camera-page-btn {
-      font-size: 0.85rem;
-      padding: 0.5rem 1rem;
-    }
-  
-    .camera-page-button-group {
-      gap: 0.5rem;
-    }
-  }
-  
-  /* Spinner Styling */
-  .camera-page-spinner-border {
-    width: 2rem;
-    height: 2rem;
-    margin: 2rem auto;
-    display: block;
-    color: #1e3a8a; /* Matches the theme */
-  }
+}
+
+/* Spinner Styling */
+.camera-page-spinner-border {
+  width: 2rem;
+  height: 2rem;
+  margin: 2rem auto;
+  display: block;
+  color: #1e3a8a; /* Matches the theme */
+}
