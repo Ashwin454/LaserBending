@@ -14,6 +14,7 @@ function Camera() {
   const [maxZoom, setMaxZoom] = useState(5); // Maximum zoom level
   const [videoWidth, setVideoWidth] = useState(640); // Dynamic width
   const [videoHeight, setVideoHeight] = useState(480); // Dynamic height
+  const [zoomSupported, setZoomSupported] = useState(false); // Track zoom support
   let refFrameGray = null;
   let refFrameRed = null;
   let windowTop = 0;
@@ -51,7 +52,6 @@ function Camera() {
     };
     checkOpenCV();
 
-    // Handle orientation change
     const handleOrientationChange = () => {
       updateResolution();
     };
@@ -67,7 +67,7 @@ function Camera() {
 
   const updateResolution = () => {
     const isLandscape = window.innerWidth > window.innerHeight;
-    const aspectRatio = 4 / 3; // Common camera aspect ratio
+    const aspectRatio = 4 / 3;
     if (isLandscape) {
       setVideoWidth(Math.min(window.innerWidth, 1280));
       setVideoHeight(Math.floor(videoWidth / aspectRatio));
@@ -86,13 +86,19 @@ function Camera() {
           facingMode: 'environment',
           width: { ideal: videoWidth },
           height: { ideal: videoHeight },
-          zoom: { ideal: zoomLevel }, // Attempt to set initial zoom
         },
       })
       .then((stream) => {
         const videoTrack = stream.getVideoTracks()[0];
         const capabilities = videoTrack.getCapabilities();
-        setMaxZoom(capabilities.zoom?.max || 5); // Set max zoom based on device capability
+        const zoomCap = capabilities.zoom;
+        setMaxZoom(zoomCap?.max || 5);
+        setZoomSupported(!!zoomCap);
+        if (!zoomCap) {
+          setStatus('Hardware zoom not supported, using canvas zoom');
+        } else {
+          adjustZoom();
+        }
 
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -105,31 +111,9 @@ function Camera() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Error accessing back camera:', err);
-        setStatus('Back camera error: ' + err.message);
-        navigator.mediaDevices
-          .getUserMedia({
-            video: {
-              width: { ideal: videoWidth },
-              height: { ideal: videoHeight },
-            },
-          })
-          .then((stream) => {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play();
-            const process = () => {
-              processFrame();
-              rafId.current = requestAnimationFrame(process);
-            };
-            rafId.current = requestAnimationFrame(process);
-            setStatus('Camera started (fallback)');
-            setLoading(false);
-          })
-          .catch((fallbackErr) => {
-            console.error('Fallback camera error:', fallbackErr);
-            setStatus('No camera available: ' + fallbackErr.message);
-            setLoading(false);
-          });
+        console.error('Error accessing camera:', err);
+        setStatus('Camera error: ' + err.message);
+        setLoading(false);
       });
   };
 
@@ -173,16 +157,19 @@ function Camera() {
     }
 
     const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
+    const zoomFactor = zoomSupported ? 1 : zoomLevel; // Use canvas zoom only if hardware zoom isn't supported
+    const offsetX = (canvasRef.current.width - canvasRef.current.width / zoomFactor) / 2;
+    const offsetY = (canvasRef.current.height - canvasRef.current.height / zoomFactor) / 2;
     ctx.drawImage(
       videoRef.current,
       0,
       0,
-      canvasRef.current.width / zoomLevel,
-      canvasRef.current.height / zoomLevel,
-      0,
-      0,
-      canvasRef.current.width,
-      canvasRef.current.height
+      videoRef.current.videoWidth,
+      videoRef.current.videoHeight,
+      offsetX,
+      offsetY,
+      canvasRef.current.width / zoomFactor,
+      canvasRef.current.height / zoomFactor
     );
 
     let frame = null;
@@ -438,14 +425,18 @@ function Camera() {
   const adjustZoom = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const videoTrack = videoRef.current.srcObject.getVideoTracks()[0];
-      if (videoTrack && 'applyConstraints' in videoTrack) {
+      if (videoTrack && 'applyConstraints' in videoTrack && zoomSupported) {
         videoTrack.applyConstraints({
-          zoom: zoomLevel,
-        }).catch(err => console.warn('Zoom not supported, falling back to canvas:', err));
+          advanced: [{ zoom: zoomLevel }],
+        }).catch(err => {
+          console.warn('Hardware zoom failed, using canvas zoom:', err);
+          setZoomSupported(false); // Switch to canvas zoom
+        });
+      } else {
+        setStatus('Using canvas zoom as hardware zoom is not supported');
       }
     }
   };
-
   return (
     <div className="camera-page">
       <h1 className="camera-page-title">Laser Detection</h1>
@@ -459,38 +450,59 @@ function Camera() {
           />
           <canvas
             ref={canvasRef}
-            width={videoWidth}
-            height={videoHeight}
+            width={videoWidth * zoomLevel}
+            height={videoHeight * zoomLevel}
             style={{ display: 'none' }}
           />
-          <p className="camera-page-status-text">Status: {status}</p>
-          <p className="camera-page-intensity-text">Intensity: {intensity}</p>
-          {laserCoords && (
-            <p className="camera-page-coords-text">Laser Coordinates: ({laserCoords.x}, {laserCoords.y})</p>
-          )}
-          {warning && <p className="camera-page-warning-text">Warning: {warning}</p>}
-          <div className="camera-page-button-group">
-            <button onClick={handleZoomIn} className="camera-page-btn camera-page-btn-secondary" disabled={loading || zoomLevel >= maxZoom}>
-              Zoom In +
-            </button>
-            <button onClick={handleZoomOut} className="camera-page-btn camera-page-btn-secondary" disabled={loading || zoomLevel <= 1}>
-              Zoom Out -
-            </button>
-            <button onClick={startCamera} className="camera-page-btn camera-page-btn-primary" disabled={loading}>
-              Start Camera
-            </button>
-            <button onClick={stopCamera} className="camera-page-btn camera-page-btn-danger" disabled={loading}>
-              Stop Camera
-            </button>
-            <a href="/" className="camera-page-btn camera-page-btn-secondary">
-              Back
-            </a>
-          </div>
-          {loading && (
-            <div className="camera-page-spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
+          <div> {/* Wrap all status-related elements in a single div */}
+            <p className="camera-page-status-text">Status: {status}</p>
+            <p className="camera-page-intensity-text">Intensity: {intensity}</p>
+            {laserCoords && (
+              <p className="camera-page-coords-text">Laser Coordinates: ({laserCoords.x}, {laserCoords.y})</p>
+            )}
+            {warning && (
+              <p className="camera-page-warning-text">Warning: {warning}</p>
+            )}
+            <p className="camera-page-zoom-text">Zoom Level: {zoomLevel.toFixed(1)}x (Max: {maxZoom}x)</p>
+            <div className="camera-page-button-group">
+              <button
+                onClick={handleZoomIn}
+                className="camera-page-btn camera-page-btn-secondary"
+                disabled={loading || zoomLevel >= maxZoom}
+              >
+                Zoom In +
+              </button>
+              <button
+                onClick={handleZoomOut}
+                className="camera-page-btn camera-page-btn-secondary"
+                disabled={loading || zoomLevel <= 1}
+              >
+                Zoom Out -
+              </button>
+              <button
+                onClick={startCamera}
+                className="camera-page-btn camera-page-btn-primary"
+                disabled={loading}
+              >
+                Start Camera
+              </button>
+              <button
+                onClick={stopCamera}
+                className="camera-page-btn camera-page-btn-danger"
+                disabled={loading}
+              >
+                Stop Camera
+              </button>
+              <a href="/" className="camera-page-btn camera-page-btn-secondary">
+                Back
+              </a>
             </div>
-          )}
+            {loading && (
+              <div className="camera-page-spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
