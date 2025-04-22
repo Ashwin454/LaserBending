@@ -19,6 +19,8 @@ import matplotlib.pyplot as plt
 import io
 import logging
 import ezdxf
+from collections import deque
+import uuid
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,6 +35,7 @@ cloudinary.config(
 )
 
 ALLOWED_EXTENSIONS = {'dxf'}
+GCODE_STORAGE = deque(maxlen=10)
 
 # Load synthetic dataset
 csv_path = os.getenv('CSV_PATH', 'synthetic_bend_dataset.csv')
@@ -467,14 +470,30 @@ def generate_gcode():
         try:
             gcode = generate_cnc_code(scan_data)
             logger.debug("Generated G-code:\n%s", gcode)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            gcode_filename = f"laser_bending_{timestamp}.gcode"
+            request_id = str(uuid.uuid4())  # Unique ID for this GCode
+            gcode_entry = {
+                'filename': gcode_filename,
+                'gcode': gcode,
+                'timestamp': timestamp,
+                'predictions': predictions,
+                'request_id': request_id
+            }
+            GCODE_STORAGE.append(gcode_entry)
+            logger.info("Stored GCode in memory: %s (ID: %s)", gcode_filename, request_id)
+
         except Exception as e:
             logger.error("Failed to generate G-code: %s", str(e))
             return jsonify({'error': f'G-code generation failed: {str(e)}'}), 500
 
+
         # Return predictions and G-code
         response_dict = {
             'predictions': predictions,
-            'gcode': gcode
+            'gcode': gcode,
+            'filename': gcode_filename,
+            'request_id': request_id
         }
         
         logger.info("G-code response sent: %s", response_dict)
@@ -483,6 +502,41 @@ def generate_gcode():
     except Exception as e:
         logger.error("Server error: %s", str(e))
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+@auth_bp.route('/latest-gcode', methods=['GET'])
+def latest_gcode():
+    try:
+        if not GCODE_STORAGE:
+            logger.warning("No GCode available")
+            return jsonify({'error': 'No GCode available'}), 404
+        latest_entry = GCODE_STORAGE[-1]  # Get most recent
+        response_dict = {
+            'filename': latest_entry['filename'],
+            'gcode': latest_entry['gcode'],
+            'timestamp': latest_entry['timestamp'],
+            'predictions': latest_entry['predictions'],
+            'request_id': latest_entry['request_id']
+        }
+        logger.info("Sent latest GCode: %s (ID: %s)", latest_entry['filename'], latest_entry['request_id'])
+        return jsonify(response_dict), 200
+    except Exception as e:
+        logger.error("Failed to fetch latest GCode: %s", str(e))
+        return jsonify({'error': f'Failed to fetch GCode: {str(e)}'}), 500
+
+@auth_bp.route('/confirm-gcode/<request_id>', methods=['POST'])
+def confirm_gcode(request_id):
+    try:
+        for i, entry in enumerate(GCODE_STORAGE):
+            if entry['request_id'] == request_id:
+                GCODE_STORAGE.remove(entry)
+                logger.info("Deleted GCode from storage: %s (ID: %s)", entry['filename'], request_id)
+                return jsonify({'message': f'GCode {request_id} deleted'}), 200
+        logger.warning("GCode not found: %s", request_id)
+        return jsonify({'error': f'GCode {request_id} not found'}), 404
+    except Exception as e:
+        logger.error("Failed to confirm GCode: %s", str(e))
+        return jsonify({'error': f'Failed to confirm: {str(e)}'}), 500
+    
 
 @auth_bp.route('/graph', methods=['POST'])
 def generate_arc_plot():
@@ -708,3 +762,4 @@ def detect_bends_and_angles(mask, image, horizontal_only=False, RIGHT_ROI=0, min
         bend_points.append((x1, y1))
         angles_dict[f"Bend {len(bend_points)}"] = round(angle_diff, 2)
     return bend_points, angles_dict
+
